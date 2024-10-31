@@ -162,7 +162,7 @@ func main() {
 	templates := []EventTemplate{
 		// Work Schedule
 		{
-			summary:     "Work Hours",
+			summary:     "Work Hours 💻",
 			description: "Remote work time (Berlin office hours)",
 			startTime:   "11:00",
 			duration:    7 * time.Hour,
@@ -171,7 +171,7 @@ func main() {
 		},
 		// Family Time
 		{
-			summary:     "Family Time",
+			summary:     "Family Time 🏡",
 			description: "Dedicated family time - no work or exercise",
 			startTime:   "18:30",
 			duration:    3*time.Hour + 30*time.Minute,
@@ -180,7 +180,7 @@ func main() {
 		},
 		// Gym Days (Mon/Wed/Fri)
 		{
-			summary:     "Gym Workout",
+			summary:     "Gym Workout 🏋️‍♂️",
 			description: "Gym session - focus on consistency over intensity",
 			startTime:   "06:00",
 			duration:    90 * time.Minute,
@@ -189,7 +189,7 @@ func main() {
 		},
 		// Meals
 		{
-			summary:     "Pre-workout Snack",
+			summary:     "Pre-workout Snack 🍌",
 			description: "Light snack before gym (gym days only)",
 			startTime:   "05:30",
 			duration:    15 * time.Minute,
@@ -197,7 +197,7 @@ func main() {
 			reminderMin: 10,
 		},
 		{
-			summary:     "Breakfast",
+			summary:     "Breakfast 🍳",
 			description: "Protein-rich breakfast",
 			startTime:   "08:00",
 			duration:    30 * time.Minute,
@@ -205,7 +205,7 @@ func main() {
 			reminderMin: 10,
 		},
 		{
-			summary:     "Lunch",
+			summary:     "Lunch 🥗",
 			description: "Healthy lunch before work",
 			startTime:   "12:00",
 			duration:    45 * time.Minute,
@@ -213,7 +213,7 @@ func main() {
 			reminderMin: 15,
 		},
 		{
-			summary:     "Afternoon Snack",
+			summary:     "Afternoon Snack 🍎",
 			description: "Healthy afternoon snack",
 			startTime:   "15:30",
 			duration:    15 * time.Minute,
@@ -221,7 +221,7 @@ func main() {
 			reminderMin: 10,
 		},
 		{
-			summary:     "Dinner",
+			summary:     "Dinner 🍲",
 			description: "Last meal of the day - keep it light for GERD management",
 			startTime:   "19:00",
 			duration:    30 * time.Minute,
@@ -230,7 +230,7 @@ func main() {
 		},
 		// GERD Management Reminders
 		{
-			summary:     "No More Food Today",
+			summary:     "No More Food Today 🚫",
 			description: "Stop eating for GERD management - no food after this point",
 			startTime:   "19:30",
 			duration:    1 * time.Minute,
@@ -238,7 +238,7 @@ func main() {
 			reminderMin: 5,
 		},
 		{
-			summary:     "Prepare for Sleep",
+			summary:     "Prepare for Sleep 🛌",
 			description: "Elevate head of bed, avoid lying flat for GERD management",
 			startTime:   "22:00",
 			duration:    1 * time.Minute,
@@ -247,7 +247,7 @@ func main() {
 		},
 		// Exercise Reminders for Non-Gym Days
 		{
-			summary:     "Post-Meal Walk",
+			summary:     "Post-Meal Walk 🚶‍♂️",
 			description: "15-20 minute walk after meal (non-gym days)",
 			startTime:   "13:00",
 			duration:    20 * time.Minute,
@@ -255,7 +255,7 @@ func main() {
 			reminderMin: 10,
 		},
 		{
-			summary:     "Evening Stretching",
+			summary:     "Evening Stretching 🧘‍♂️",
 			description: "Basic stretching routine before bed",
 			startTime:   "21:30",
 			duration:    15 * time.Minute,
