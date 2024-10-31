@@ -334,22 +334,6 @@ Today is your designated rest day. Focus on:
 	return "No workout scheduled for this day"
 }
 
-func getDayType(weekday time.Weekday) string {
-	intenseDays := map[time.Weekday]bool{
-		time.Monday:    true,
-		time.Wednesday: true,
-		time.Friday:    true,
-	}
-
-	if intenseDays[weekday] {
-		return "Intense"
-	}
-	if weekday == time.Sunday {
-		return "Rest"
-	}
-	return "Light"
-}
-
 func getWorkoutEmoji(dayType string) string {
 	switch dayType {
 	case "Intense":
