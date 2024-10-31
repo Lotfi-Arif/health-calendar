@@ -23,6 +23,12 @@ type EventTemplate struct {
 	duration    time.Duration
 	daysOfWeek  []time.Weekday
 	reminderMin int64
+	colorId     string
+}
+
+// StoredEventIds structure to save event IDs
+type StoredEventIds struct {
+	EventIds map[string]string `json:"event_ids"` // map[summary]eventId
 }
 
 func getClient(config *oauth2.Config) *http.Client {
@@ -73,25 +79,24 @@ func saveToken(path string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func createRecurringEvent(srv *calendar.Service, template EventTemplate, timeZone string) error {
+func createRecurringEvent(srv *calendar.Service, template EventTemplate, timeZone string) (string, error) {
 	// Calculate the start of next week
 	now := time.Now()
 	daysUntilMonday := (8 - int(now.Weekday())) % 7
 	startDate := now.AddDate(0, 0, daysUntilMonday)
 
+	var lastEventId string
+
 	for _, day := range template.daysOfWeek {
-		// Calculate the day offset
 		dayOffset := (int(day) - int(startDate.Weekday()) + 7) % 7
 		eventStart := startDate.AddDate(0, 0, dayOffset)
 
-		// Parse the time
 		startTimeComponents := template.startTime
 		eventStartTime, err := time.Parse("15:04", startTimeComponents)
 		if err != nil {
-			return fmt.Errorf("error parsing time: %v", err)
+			return "", fmt.Errorf("error parsing time: %v", err)
 		}
 
-		// Combine date and time
 		finalStartTime := time.Date(
 			eventStart.Year(), eventStart.Month(), eventStart.Day(),
 			eventStartTime.Hour(), eventStartTime.Minute(), 0, 0,
@@ -111,6 +116,7 @@ func createRecurringEvent(srv *calendar.Service, template EventTemplate, timeZon
 				TimeZone: timeZone,
 			},
 			Recurrence: []string{"RRULE:FREQ=WEEKLY"},
+			ColorId:    template.colorId,
 			Reminders: &calendar.EventReminders{
 				Overrides: []*calendar.EventReminder{
 					{
@@ -119,7 +125,7 @@ func createRecurringEvent(srv *calendar.Service, template EventTemplate, timeZon
 					},
 					{
 						Method:  "email",
-						Minutes: template.reminderMin + 5, // Email reminder slightly earlier
+						Minutes: template.reminderMin + 5,
 					},
 				},
 				UseDefault:      false,
@@ -127,11 +133,57 @@ func createRecurringEvent(srv *calendar.Service, template EventTemplate, timeZon
 			},
 		}
 
-		_, err = srv.Events.Insert("primary", event).Do()
+		createdEvent, err := srv.Events.Insert("primary", event).Do()
 		if err != nil {
-			return fmt.Errorf("unable to create event: %v", err)
+			return "", fmt.Errorf("unable to create event: %v", err)
+		}
+		lastEventId = createdEvent.Id
+	}
+
+	return lastEventId, nil
+}
+
+func saveEventIds(eventIds map[string]string) error {
+	data := StoredEventIds{
+		EventIds: eventIds,
+	}
+	file, err := json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return fmt.Errorf("error marshaling event IDs: %v", err)
+	}
+	return os.WriteFile("event_ids.json", file, 0644)
+}
+
+func loadEventIds() (map[string]string, error) {
+	file, err := os.ReadFile("event_ids.json")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]string), nil
+		}
+		return nil, err
+	}
+
+	var data StoredEventIds
+	if err := json.Unmarshal(file, &data); err != nil {
+		return nil, err
+	}
+	return data.EventIds, nil
+}
+
+func deleteExistingEvents(srv *calendar.Service) error {
+	eventIds, err := loadEventIds()
+	if err != nil {
+		return fmt.Errorf("error loading event IDs: %v", err)
+	}
+
+	for summary, eventId := range eventIds {
+		fmt.Printf("Deleting existing event: %s (ID: %s)\n", summary, eventId)
+		err := srv.Events.Delete("primary", eventId).Do()
+		if err != nil {
+			fmt.Printf("Error deleting event '%s': %v\n", summary, err)
 		}
 	}
+
 	return nil
 }
 
@@ -158,9 +210,8 @@ func main() {
 		time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday,
 	}
 
-	// Define event templates
+	// Define event templates with colors
 	templates := []EventTemplate{
-		// Work Schedule
 		{
 			summary:     "Work Hours 💻",
 			description: "Remote work time (Berlin office hours)",
@@ -168,8 +219,8 @@ func main() {
 			duration:    7 * time.Hour,
 			daysOfWeek:  weekdays,
 			reminderMin: 15,
+			colorId:     "1", // Lavender
 		},
-		// Family Time
 		{
 			summary:     "Family Time 🏡",
 			description: "Dedicated family time - no work or exercise",
@@ -177,8 +228,8 @@ func main() {
 			duration:    3*time.Hour + 30*time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 15,
+			colorId:     "3", // Grape
 		},
-		// Gym Days (Mon/Wed/Fri)
 		{
 			summary:     "Gym Workout 🏋️‍♂️",
 			description: "Gym session - focus on consistency over intensity",
@@ -186,8 +237,8 @@ func main() {
 			duration:    90 * time.Minute,
 			daysOfWeek:  []time.Weekday{time.Monday, time.Wednesday, time.Friday},
 			reminderMin: 30,
+			colorId:     "10", // Green
 		},
-		// Meals
 		{
 			summary:     "Pre-workout Snack 🍌",
 			description: "Light snack before gym (gym days only)",
@@ -195,6 +246,7 @@ func main() {
 			duration:    15 * time.Minute,
 			daysOfWeek:  []time.Weekday{time.Monday, time.Wednesday, time.Friday},
 			reminderMin: 10,
+			colorId:     "5", // Banana
 		},
 		{
 			summary:     "Breakfast 🍳",
@@ -203,6 +255,7 @@ func main() {
 			duration:    30 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 10,
+			colorId:     "5",
 		},
 		{
 			summary:     "Lunch 🥗",
@@ -211,6 +264,7 @@ func main() {
 			duration:    45 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 15,
+			colorId:     "5",
 		},
 		{
 			summary:     "Afternoon Snack 🍎",
@@ -219,6 +273,7 @@ func main() {
 			duration:    15 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 10,
+			colorId:     "5",
 		},
 		{
 			summary:     "Dinner 🍲",
@@ -227,8 +282,8 @@ func main() {
 			duration:    30 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 15,
+			colorId:     "5",
 		},
-		// GERD Management Reminders
 		{
 			summary:     "No More Food Today 🚫",
 			description: "Stop eating for GERD management - no food after this point",
@@ -236,6 +291,7 @@ func main() {
 			duration:    1 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 5,
+			colorId:     "11", // Red
 		},
 		{
 			summary:     "Prepare for Sleep 🛌",
@@ -244,8 +300,8 @@ func main() {
 			duration:    1 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 15,
+			colorId:     "9", // Blue
 		},
-		// Exercise Reminders for Non-Gym Days
 		{
 			summary:     "Post-Meal Walk 🚶‍♂️",
 			description: "15-20 minute walk after meal (non-gym days)",
@@ -253,6 +309,7 @@ func main() {
 			duration:    20 * time.Minute,
 			daysOfWeek:  []time.Weekday{time.Tuesday, time.Thursday},
 			reminderMin: 10,
+			colorId:     "10", // Green
 		},
 		{
 			summary:     "Evening Stretching 🧘‍♂️",
@@ -261,17 +318,36 @@ func main() {
 			duration:    15 * time.Minute,
 			daysOfWeek:  weekdays,
 			reminderMin: 10,
+			colorId:     "10", // Green
 		},
 	}
 
-	// Create all events
+	// First, delete existing events
+	fmt.Println("Cleaning up existing events...")
+	err = deleteExistingEvents(srv)
+	if err != nil {
+		log.Printf("Error during cleanup: %v\n", err)
+	}
+
+	// Add a small delay to ensure all deletions are processed
+	time.Sleep(2 * time.Second)
+
+	// Create all events and store their IDs
+	fmt.Println("\nCreating new events...")
+	eventIds := make(map[string]string)
 	for _, template := range templates {
 		fmt.Printf("Creating recurring event: %s\n", template.summary)
-		err := createRecurringEvent(srv, template, timeZone)
+		eventId, err := createRecurringEvent(srv, template, timeZone)
 		if err != nil {
 			fmt.Printf("Error creating event '%s': %v\n", template.summary, err)
 		} else {
 			fmt.Printf("Successfully created recurring event: %s\n", template.summary)
+			eventIds[template.summary] = eventId
 		}
+	}
+
+	// Save the event IDs
+	if err := saveEventIds(eventIds); err != nil {
+		log.Printf("Error saving event IDs: %v\n", err)
 	}
 }
